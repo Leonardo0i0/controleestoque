@@ -1,5 +1,7 @@
 package conexao;
 
+import telaEstoque.Produto;
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,17 +36,23 @@ public class CRUD {
     }
 
     // READ - Listar todos os produtos
-    public List<String> listarProdutos() {
-        List<String> produtos = new ArrayList<>();
+    // READ - Listar todos os produtos (retorna objetos Produto)
+    public List<Produto> listarProdutosDB() {
+        List<Produto> produtos = new ArrayList<>();
         String sql = "SELECT * FROM produto";
-        try (Connection conn = getConnection(); Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
             while (rs.next()) {
-                String produto = rs.getInt("IdProduto") + " - " +
-                        rs.getString("nomeProduto") + " - " +
-                        rs.getString("tipoProduto") + " - " +
-                        rs.getInt("quantidadeProduto") + " unidades - R$ " +
-                        rs.getDouble("precoProduto") + " - " +
-                        rs.getInt("qtdAVencer") + " a vencer";
+                Produto produto = new Produto(
+                        String.valueOf(rs.getInt("IdProduto")),   // codigo
+                        rs.getString("nomeProduto"),              // nome
+                        rs.getInt("quantidadeProduto"),           // quantidade
+                        rs.getString("tipoProduto"),              // tipo
+                        rs.getDouble("precoProduto"),             // preco
+                        String.valueOf(rs.getInt("qtdAVencer"))   // vencimentoMes
+                );
                 produtos.add(produto);
             }
         } catch (SQLException e) {
@@ -52,6 +60,7 @@ public class CRUD {
         }
         return produtos;
     }
+
 
     // UPDATE - Atualizar preço e quantidade
     public void atualizarProduto(int id, int novaQtd, double novoPreco) {

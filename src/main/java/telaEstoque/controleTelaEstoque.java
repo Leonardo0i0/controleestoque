@@ -1,5 +1,6 @@
 package telaEstoque;
 
+import conexao.CRUD;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -11,6 +12,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 
 public class controleTelaEstoque {
+    CRUD conn = new CRUD();
 
     // Campos de Texto
     @FXML private TextField txtCodigo;
@@ -55,7 +57,8 @@ public class controleTelaEstoque {
 
     @FXML
     public void initialize() {
-        carregarProdutosExemplo();
+        //carregar produtos do banco de dados();
+        listaProdutos.addAll(conn.listarProdutosDB());
 
         // Configuração das colunas
         colCodigo.setCellValueFactory(new PropertyValueFactory<>("codigo"));
