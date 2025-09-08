@@ -5,10 +5,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
-import javafx.scene.control.Label;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 
 public class controleTelaEstoque {
@@ -23,6 +20,7 @@ public class controleTelaEstoque {
     @FXML private TextField txtVencimentoMes;
     @FXML private TextField txtFiltro;
     @FXML private Label testando;
+    @FXML private ComboBox<String> cbTipo;
 
     // Tabela
     @FXML private TableView<Produto> tabelaProdutos;
@@ -46,21 +44,22 @@ public class controleTelaEstoque {
         alert.showAndWait();
     }
 
-    // Produtos de exemplo
-    void carregarProdutosExemplo() {
-        Produto p1 = new Produto("001", "Arroz", 10, "Alimento", 25.50, "20");
-        Produto p2 = new Produto("002", "Feijão", 20, "Alimento", 15.90, "15");
-        Produto p3 = new Produto("003", "Sabonete", 50, "Higiene", 3.20, "18");
-
-        listaProdutos.addAll(p1, p2, p3);
+    // Método auxiliar para atualizar a tabela
+    private void atualizarTabela() {
+        listaProdutos.clear();
+        listaProdutos.addAll(conn.listarProdutosDB());
     }
 
     @FXML
     public void initialize() {
-        //carregar produtos do banco de dados();
-        listaProdutos.addAll(conn.listarProdutosDB());
+        // Carregar opções pré-definidas no ComboBox
+        cbTipo.getItems().addAll("Bebida", "Limpeza", "Alimento", "Higiene", "Utilidades");
 
-        // Configuração das colunas
+        // Deixar vazio no início e texto do prompt
+        cbTipo.setValue(null);
+        cbTipo.setPromptText("Selecione o tipo");
+
+        // Configuração das colunas da tabela
         colCodigo.setCellValueFactory(new PropertyValueFactory<>("codigo"));
         colNome.setCellValueFactory(new PropertyValueFactory<>("nome"));
         colQuantidade.setCellValueFactory(new PropertyValueFactory<>("quantidade"));
@@ -84,45 +83,79 @@ public class controleTelaEstoque {
         });
 
         // Context Menu (Botão direito)
-        javafx.scene.control.ContextMenu contextMenu = new javafx.scene.control.ContextMenu();
+        ContextMenu contextMenu = new ContextMenu();
 
-        javafx.scene.control.MenuItem editarItem = new javafx.scene.control.MenuItem("Editar");
+        MenuItem editarItem = new MenuItem("Editar");
         editarItem.setOnAction(e -> {
             Produto selecionado = tabelaProdutos.getSelectionModel().getSelectedItem();
             if (selecionado != null) {
                 txtCodigo.setText(selecionado.getCodigo());
+                txtCodigo.setDisable(true);
                 txtNome.setText(selecionado.getNome());
                 txtQuantidade.setText(String.valueOf(selecionado.getQuantidade()));
-                txtTipo.setText(selecionado.getTipo());
+                cbTipo.setValue(selecionado.getTipo()); // Corrigido para ComboBox
                 txtPreco.setText(String.format("%.2f", selecionado.getPreco()).replace(".", ","));
                 txtVencimentoMes.setText(selecionado.getVencimentoMes());
             }
         });
 
-        javafx.scene.control.MenuItem deletarItem = new javafx.scene.control.MenuItem("Deletar");
+        MenuItem deletarItem = new MenuItem("Deletar");
         deletarItem.setOnAction(e -> deletarProduto());
 
         contextMenu.getItems().addAll(editarItem, deletarItem);
         tabelaProdutos.setContextMenu(contextMenu);
+
+        // Carregar produtos do banco ao iniciar
+        atualizarTabela();
     }
 
     // Salvar ou editar produto
     @FXML
     protected void salvarProduto() {
+        // Aceitar só inteiros positivos
+        txtCodigo.setTextFormatter(new TextFormatter<>(change ->
+                (change.getControlNewText().matches("\\d*")) ? change : null));
+
+        txtQuantidade.setTextFormatter(new TextFormatter<>(change ->
+                (change.getControlNewText().matches("\\d*")) ? change : null));
+
+        txtVencimentoMes.setTextFormatter(new TextFormatter<>(change ->
+                (change.getControlNewText().matches("\\d*")) ? change : null));
+
+        // Aceitar decimal (números com ponto ou vírgula)
+        txtPreco.setTextFormatter(new TextFormatter<>(change ->
+                (change.getControlNewText().matches("[0-9]*([\\.,][0-9]{0,2})?")) ? change : null));
+
         Produto produtoSelecionado = tabelaProdutos.getSelectionModel().getSelectedItem();
 
         if (produtoSelecionado != null) {
             // Edita produto existente
             if (!txtNome.getText().isBlank()) produtoSelecionado.setNome(txtNome.getText());
             if (!txtQuantidade.getText().isBlank()) produtoSelecionado.setQuantidade(Integer.parseInt(txtQuantidade.getText()));
-            if (!txtTipo.getText().isBlank()) produtoSelecionado.setTipo(txtTipo.getText());
+            if (cbTipo.getValue() != null && !cbTipo.getValue().equals("Selecionar item")) {
+                produtoSelecionado.setTipo(cbTipo.getValue());
+            }
             if (!txtPreco.getText().isBlank()) produtoSelecionado.setPreco(Double.parseDouble(txtPreco.getText().replace(",", ".")));
-            if (!txtVencimentoMes.getText().isBlank()) produtoSelecionado.setVencimentoMes(txtVencimentoMes.getText());
-            tabelaProdutos.refresh();
+            if (!txtVencimentoMes.getText().isBlank() && Integer.parseInt(txtVencimentoMes.getText()) <= Integer.parseInt(txtQuantidade.getText())) produtoSelecionado.setVencimentoMes(txtVencimentoMes.getText());
+
+            if(Integer.parseInt(txtVencimentoMes.getText()) > Integer.parseInt(txtQuantidade.getText())){
+                mostrarAlerta("Aviso", "Quantidades a Vencer esta maior que a Quantidade no estoque");
+            }else {
+            conn.atualizarProduto(produtoSelecionado);
+            }
+            atualizarTabela();
+            txtCodigo.setDisable(false);
         } else {
             // Novos valores
             String codigoNovo = txtCodigo.getText();
             String nomeNovo = txtNome.getText();
+            String tipoNovo = cbTipo.getValue();
+
+            // Verifica se escolheu tipo válido
+            if (tipoNovo == null || tipoNovo.equals("Selecionar item")) {
+                mostrarAlerta("Aviso", "Selecione um tipo de produto válido!");
+                return;
+            }
 
             // Flags para duplicados
             boolean codigoExiste = listaProdutos.stream().anyMatch(p -> p.getCodigo().equals(codigoNovo));
@@ -132,17 +165,20 @@ public class controleTelaEstoque {
                 mostrarAlerta("Aviso", "Já existe um produto com esse CÓDIGO!");
             } else if (nomeExiste) {
                 mostrarAlerta("Aviso", "Já existe um produto com esse NOME!");
-            } else {
-                Produto produto = new Produto(
-                        codigoNovo,
+            } if(Integer.parseInt(txtVencimentoMes.getText()) > Integer.parseInt(txtQuantidade.getText())){
+                mostrarAlerta("Aviso", "Quantidades a Vencer esta maior que a Quantidade no estoque");
+            }else {
+                // Inserir no banco
+                conn.adicionarProduto(
+                        Integer.parseInt(codigoNovo),
                         nomeNovo,
+                        tipoNovo,
                         Integer.parseInt(txtQuantidade.getText()),
-                        txtTipo.getText(),
-                        Double.parseDouble(txtPreco.getText()),
-                        txtVencimentoMes.getText()
+                        Double.parseDouble(txtPreco.getText().replace(",", ".")),
+                        Integer.parseInt(txtVencimentoMes.getText())
                 );
-                listaProdutos.add(produto);
             }
+            atualizarTabela();
         }
 
         limparCampos();
@@ -153,8 +189,9 @@ public class controleTelaEstoque {
     protected void deletarProduto() {
         Produto produtoSelecionado = tabelaProdutos.getSelectionModel().getSelectedItem();
         if (produtoSelecionado != null) {
-            listaProdutos.remove(produtoSelecionado);
+            conn.deletarProduto(Integer.parseInt(produtoSelecionado.getCodigo()));
             limparCampos();
+            atualizarTabela();
         }
     }
 
@@ -162,9 +199,11 @@ public class controleTelaEstoque {
     @FXML
     protected void limparCampos() {
         txtCodigo.clear();
+        txtCodigo.setDisable(false);
         txtNome.clear();
         txtQuantidade.clear();
-        txtTipo.clear();
+        cbTipo.setValue(null);
+        cbTipo.setPromptText("Selecione o tipo");
         txtPreco.clear();
         txtVencimentoMes.clear();
         tabelaProdutos.getSelectionModel().clearSelection();

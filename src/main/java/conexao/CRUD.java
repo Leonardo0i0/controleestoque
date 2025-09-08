@@ -63,21 +63,68 @@ public class CRUD {
 
 
     // UPDATE - Atualizar preço e quantidade
-    public void atualizarProduto(int id, int novaQtd, double novoPreco) {
-        String sql = "UPDATE produto SET quantidadeProduto = ?, precoProduto = ? WHERE IdProduto = ?";
-        try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, novaQtd);
-            stmt.setDouble(2, novoPreco);
-            stmt.setInt(3, id);
+    public void atualizarProduto(Produto produto) {
+        StringBuilder sql = new StringBuilder("UPDATE produto SET ");
+        List<Object> valores = new ArrayList<>();
+
+        if (produto.getNome() != null && !produto.getNome().isEmpty()) {
+            sql.append("nomeProduto = ?, ");
+            valores.add(produto.getNome());
+        }
+        if (produto.getQuantidade() > 0) {
+            sql.append("quantidadeProduto = ?, ");
+            valores.add(produto.getQuantidade());
+        }
+        if (produto.getTipo() != null && !produto.getTipo().isEmpty()) {
+            sql.append("tipoProduto = ?, ");
+            valores.add(produto.getTipo());
+        }
+        if (produto.getPreco() > 0) {
+            sql.append("precoProduto = ?, ");
+            valores.add(produto.getPreco());
+        }
+        if (produto.getVencimentoMes() != null && !produto.getVencimentoMes().isEmpty()) {
+            sql.append("qtdAVencer = ?, ");
+            valores.add(Integer.parseInt(produto.getVencimentoMes()));
+        }
+
+        // remove última vírgula + espaço
+        if (valores.isEmpty()) {
+            System.out.println("Nenhum campo para atualizar!");
+            return;
+        }
+        sql.setLength(sql.length() - 2);
+
+        sql.append(" WHERE IdProduto = ?");
+        valores.add(Integer.parseInt(produto.getCodigo()));
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
+
+            // preencher os ? com os valores
+            for (int i = 0; i < valores.size(); i++) {
+                stmt.setObject(i + 1, valores.get(i));
+            }
+
             int linhas = stmt.executeUpdate();
             if (linhas > 0) {
                 System.out.println("Produto atualizado com sucesso!");
             } else {
                 System.out.println("Produto não encontrado!");
             }
+
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
+
+
+    private void mostrarAlerta(String titulo, String mensagem) {
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.WARNING);
+        alert.setTitle(titulo);
+        alert.setHeaderText(null);
+        alert.setContentText(mensagem);
+        alert.showAndWait();
     }
 
     // DELETE - Remover produto
@@ -87,9 +134,9 @@ public class CRUD {
             stmt.setInt(1, id);
             int linhas = stmt.executeUpdate();
             if (linhas > 0) {
-                System.out.println("Produto deletado com sucesso!");
+                mostrarAlerta("Sucesso","Produto deletado com sucesso!");
             } else {
-                System.out.println("Produto não encontrado!");
+                mostrarAlerta("Falhou","Produto não encontrado!");
             }
         } catch (SQLException e) {
             e.printStackTrace();

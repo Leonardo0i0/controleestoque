@@ -42,6 +42,8 @@ public class ControleTelaInicial {
             }
         } else {
             testando.setText("Usuário ou senha incorretos!");
+            usuario.clear();
+            senha.clear();
         }
     }
 }
