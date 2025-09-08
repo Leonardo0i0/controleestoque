@@ -18,9 +18,3 @@ public class TelaInicial extends Application {
         launch(args);
     }
 }
-
-/*os arquivos estão assim
-java ->org.example, telaEstoque,TelaInicial,resources
-telaEstoque->controleTelaEstoque, Produto
-TelaInicial->ControleTelaInicial,Telainicial
-resources->view->telaEstoque.fxml,telainicial.fxml*/

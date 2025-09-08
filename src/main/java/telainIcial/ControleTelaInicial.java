@@ -19,6 +19,12 @@ public class ControleTelaInicial {
     @FXML private Label testando;
     CRUD conn = new CRUD();
 
+    public void initialize() {
+        // Permitir pressionar Enter para logar
+        usuario.setOnAction(e -> login());
+        senha.setOnAction(e -> login());
+    }
+
     @FXML
     private void login() {
         if(conn.validarUsuario(usuario.getText(), senha.getText())){
